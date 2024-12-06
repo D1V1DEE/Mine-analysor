@@ -30,7 +30,7 @@ Clone this repository:
 
 bash
 Copy code
-git clone https://github.com/your-username/stake-mine-predictor.git
+git clone https://github.com/D1V1DEE/Mine-analysor/tree/main
 cd stake-mine-predictor
 Install the required dependencies:
 
