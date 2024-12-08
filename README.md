@@ -1,90 +1,82 @@
-Stake Mine Predictor: An ML Model for Risk Assessment
-Welcome to the Stake Mine Predictor GitHub repository! This project aims to leverage machine learning techniques to predict potential risks in stake mining, providing valuable insights for decision-making and optimization.
+import numpy as np
+import torch
+import torch.nn as nn
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import train_test_split
 
-Table of Contents
-Project Overview
-Features
-Installation
-Usage
-Model Details
-Dataset
-Results
-Contributing
-License
-Contact
-Project Overview
-The Stake Mine Predictor uses a combination of modern machine learning techniques to analyze patterns in stake mining operations and predict potential risks or inefficiencies. This tool is designed to aid stakeholders in optimizing their strategies and minimizing losses.
+# Prepare data
+numbers = np.array([17, 14, 4, 18, 23, 8, 7, 11, 13, 20, 2, 19, 24, 5, 17, 14, 17, 9, 20, 6, 14, 17, 19, 2, 21, 24, 24, 19, 2, 21, 4, 6, 22, 11, 3, 18, 4, 17])
+scaler = MinMaxScaler(feature_range=(0, 1))
+numbers_scaled = scaler.fit_transform(numbers.reshape(-1, 1))
 
-Key Objectives:
+# Create sequences
+def create_sequences(data, seq_length):
+    X, y = [], []
+    for i in range(len(data) - seq_length):
+        X.append(data[i:i+seq_length])
+        y.append(data[i+seq_length])
+    return np.array(X), np.array(y)
 
-Risk assessment of mining operations.
-Performance improvement via predictive insights.
-Adaptability to different datasets and scenarios.
-Features
-Automated Risk Detection: Predicts risks with high accuracy.
-Customizable Parameters: Tailor the model to fit specific datasets or scenarios.
-Visualization Tools: Insightful charts and graphs for easier decision-making.
-Scalable Implementation: Suitable for individual miners to large-scale operations.
-Installation
-Clone this repository:
+seq_length = 5
+X, y = create_sequences(numbers_scaled, seq_length)
 
-bash
-Copy code
-git clone https://github.com/D1V1DEE/Mine-analysor/tree/main
-cd stake-mine-predictor
-Install the required dependencies:
+# Split data into train and test
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
 
-bash
-Copy code
-pip install -r requirements.txt
-(Optional) Set up a virtual environment for better package management:
+# Convert data to PyTorch tensors
+X_train = torch.tensor(X_train, dtype=torch.float32)
+y_train = torch.tensor(y_train, dtype=torch.float32)
+X_test = torch.tensor(X_test, dtype=torch.float32)
+y_test = torch.tensor(y_test, dtype=torch.float32)
 
-bash
-Copy code
-python -m venv venv
-source venv/bin/activate  # For Linux/Mac
-venv\Scripts\activate     # For Windows
-Usage
-Prepare your dataset and place it in the data/ directory.
-Configure the config.json file to match your dataset structure.
+# Define PyTorch LSTM model
+class LSTMModel(nn.Module):
+    def __init__(self, input_size=1, hidden_layer_size=50, output_size=1):
+        super(LSTMModel, self).__init__()
+        self.hidden_layer_size = hidden_layer_size
+        self.lstm = nn.LSTM(input_size, hidden_layer_size)
+        self.linear = nn.Linear(hidden_layer_size, output_size)
+        self.hidden_cell = (torch.zeros(1,1,self.hidden_layer_size),
+                            torch.zeros(1,1,self.hidden_layer_size))
 
-Model Details
-The model is built using:
+    def forward(self, input_seq):
+        lstm_out, self.hidden_cell = self.lstm(input_seq.view(len(input_seq) ,1, -1), self.hidden_cell)
+        predictions = self.linear(lstm_out.view(len(input_seq), -1))
+        return predictions[-1]
 
-Frameworks: TensorFlow, PyTorch, or Scikit-learn
-Algorithms: Gradient Boosting, Random Forest, Neural Networks, etc.
-Metrics: Accuracy, Precision, Recall, F1-Score
-Dataset
-The dataset should include features such as:
+# Initialize the model, loss function, and optimizer
+model = LSTMModel()
+loss_function = nn.MSELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-Stake type and size
-Mining duration
-Historical success/failure rates
-Environmental conditions
-Note: Replace or update the data/sample_data.csv file with your actual dataset.
+# Training the model
+epochs = 300
+for i in range(epochs):
+    for seq, labels in zip(X_train, y_train):
+        optimizer.zero_grad()
+        model.hidden_cell = (torch.zeros(1, 1, model.hidden_layer_size),
+                        torch.zeros(1, 1, model.hidden_layer_size))
 
-Results
-The model achieved:
+        y_pred = model(seq)
 
-Accuracy: 92%
-Precision: 89%
-Recall: 90%
-See the reports/ directory for detailed performance metrics and visualizations.
+        single_loss = loss_function(y_pred, labels)
+        single_loss.backward()
+        optimizer.step()
 
-Contributing
-Contributions are welcome! Please follow these steps:
+    if i % 25 == 0:
+        print(f'Epoch {i} loss: {single_loss.item()}')
 
-Fork this repository.
-Create a new branch (feature/my-feature).
-Commit your changes.
-Submit a pull request.
-License
-This project is licensed under the MIT License. See the LICENSE file for details.
+# Predict the next number using the trained model
+def predict_next_number(model, data, seq_length):
+    model.eval()
+    with torch.no_grad():
+        data_tensor = torch.tensor(data, dtype=torch.float32)
+        model.hidden_cell = (torch.zeros(1, 1, model.hidden_layer_size),
+                             torch.zeros(1, 1, model.hidden_layer_size))
+        prediction = model(data_tensor)
+    return scaler.inverse_transform(prediction.view(-1, 1).numpy())[0][0]
 
-Contact
-For questions, feedback, or suggestions, reach out to:
+# Predict the next number
+next_number = predict_next_number(model, numbers_scaled[-seq_length:], seq_length)
+print("Predicted next number based on PyTorch LSTM model:", next_number)
 
-Name: Your Name
-Email: maurya.aryan1101@gmail.com
-GitHub: D1V1DEE
-Feel free to customize this template further to fit your project's specifics!
