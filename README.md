@@ -85,6 +85,6 @@ Contact
 For questions, feedback, or suggestions, reach out to:
 
 Name: Your Name
-Email: your.email@example.com
-GitHub: YourUsername
+Email: maurya.aryan1101@gmail.com
+GitHub: D1V1DEE
 Feel free to customize this template further to fit your project's specifics!
